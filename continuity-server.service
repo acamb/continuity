@@ -1,0 +1,11 @@
+[Unit]
+Description=Continuity Server
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/continuity-server -config /opt/continuity/config.yaml
+Restart=always
+User=continuity-server
+
+[Install]
+WantedBy=multi-user.target
