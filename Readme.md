@@ -23,13 +23,13 @@ The CLI client is also available for Windows.
 The simplest way to run Continuity is via Docker. You can pull the latest image from Docker Hub:
 
 ```bash
-docker pull acamb/continuity:latest
+docker pull acamb23/continuity:latest
 ```
 
 Then, run the container with your configuration file mounted:
 
 ```bash
-docker run -d -p 80:80 -v /path/to/continuity.yaml:/opt/continuity/config.yaml acamb/continuity:latest
+docker run -d -p 80:80 -v /path/to/continuity.yaml:/opt/continuity/config.yaml acamb23/continuity:latest
 ```
 
 or using docker-compose:
@@ -37,7 +37,7 @@ or using docker-compose:
 ```yaml
 services:
   continuity:
-    image: acamb/continuity:latest
+    image: acamb23/continuity:latest
     ports:
       - "80:80"
     volumes:

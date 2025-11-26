@@ -14,6 +14,10 @@ server:
 	mkdir -p $(BINDIR)
 	go build -ldflags "-X 'continuity/server/version.Version=$(VERSION)'" -o $(BINDIR)/continuity-server_$(VERSION) ./server/cmd
 
+server-static:
+	mkdir -p $(BINDIR)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w -X 'continuity/server/version.Version=$(VERSION)'" -o $(BINDIR)/continuity-server-static_$(VERSION) ./server/cmd
+
 client:
 	mkdir -p $(BINDIR)
 	go build -ldflags "-X 'continuity/client/version.Version=$(VERSION)'" -o $(BINDIR)/continuity_$(VERSION) ./client/cmd
@@ -153,12 +157,12 @@ docker-client-rpm: client
 
 docker-release: server
 	docker build -t continuity-server -f Dockerfile .
-	 docker tag continuity-server continuity/continuity-server:$(VERSION)
+	docker tag continuity-server acamb23/continuity-server:$(VERSION)
 
 docker-publish: docker-release
-	docker push continuity/continuity-server:$(VERSION)
+	docker push acamb23/continuity-server:$(VERSION)
 
-release: server client client-windows docker-server-deb docker-client-deb docker-server-rpm docker-client-rpm
+release: server server-static client client-windows docker-server-deb docker-client-deb docker-server-rpm docker-client-rpm
 
 check:
 	cd server/api && go test -v ./... && cd ..
