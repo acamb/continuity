@@ -1,9 +1,10 @@
 package config
 
 import (
-	"gopkg.in/yaml.v2"
 	"io"
 	"os"
+
+	"gopkg.in/yaml.v2"
 )
 
 type Configuration struct {
@@ -13,7 +14,7 @@ type Configuration struct {
 
 func ReadConfiguration(filePath string) (*Configuration, error) {
 	config := &Configuration{
-		Host: "localhost",
+		Host: "http://localhost",
 		Port: 8090,
 	}
 
