@@ -56,6 +56,17 @@ type ServerHost struct {
 	interceptAppCookieCallback InterceptAppCookieCallback
 }
 
+func (sh *ServerHost) String() string {
+	return "ServerHost{" +
+		"Id: " + sh.Id.String() +
+		", Address: " + sh.Address.String() +
+		", Condition: " + sh.Condition.String() +
+		", ServerStatus: " + ServerStatus(sh.ServerStatus.Load()).String() +
+		", HealthCheckPath: " + sh.HealthCheckPath +
+		", CreatedAt: " + time.Unix(sh.CreatedAt, 0).String() +
+		"}"
+}
+
 func NewServerHost(address string, healtCheckPath string, condition common.Condition) (*ServerHost, error) {
 	parsed, err := url.Parse(address)
 	if err != nil {

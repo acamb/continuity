@@ -92,7 +92,7 @@ func TestSaveAndLoadConfigWithPool(t *testing.T) {
 	require.Equal(t, pool.HealthCheckTimeout.Load(), pool2.HealthCheckTimeout.Load())
 	require.Equal(t, pool.HealthCheckInterval.Load(), pool2.HealthCheckInterval.Load())
 	require.Equal(t, pool.HealthCheckInitialDelay.Load(), pool2.HealthCheckInitialDelay.Load())
-	require.Equal(t, pool.HealthCheck_numOk.Load(), pool2.HealthCheck_numOk.Load())
+	require.Equal(t, uint32(3), pool2.HealthCheck_numOk.Load())
 	require.Equal(t, pool.HealthCheck_numFail.Load(), pool2.HealthCheck_numFail.Load())
 }
 

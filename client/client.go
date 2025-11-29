@@ -120,7 +120,7 @@ func (c *Client) GetPoolConfig(hostname string, printJson bool) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Println(string(jsonOutput))
+			fmt.Println(string(jsonOutput))
 		}
 	}
 }
@@ -156,7 +156,12 @@ func (c *Client) GetPoolStats(hostname string, printJson bool) {
 }
 
 func (c *Client) UpdatePool(request requests.UpdatePoolRequest) {
-	resp, err := c.httpclient.Post(c.endpoint+"/"+base64.RawURLEncoding.EncodeToString([]byte(request.Hostname)), "", nil)
+	body, err := json.Marshal(request)
+	log.Println("Updating pool with request:", string(body))
+	if err != nil {
+		log.Fatal(err)
+	}
+	resp, err := c.httpclient.Post(c.endpoint+"/"+base64.RawURLEncoding.EncodeToString([]byte(request.Hostname)), "", bytes.NewReader(body))
 	if err != nil {
 		log.Fatal(err)
 	}

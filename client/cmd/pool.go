@@ -93,6 +93,7 @@ var poolStatsCmd = &cobra.Command{
 var updatePoolCmd = &cobra.Command{
 	Use:   "update POOL_NAME",
 	Short: "Update configuration of a specific pool",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		hostname = args[0]
 

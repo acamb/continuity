@@ -7,19 +7,19 @@ import (
 )
 
 type PoolResponse struct {
-	Hostname                string
-	HealthCheckInterval     uint64
-	HealthCheckInitialDelay uint64
-	HealthCheckTimeout      uint64
-	HealthCheck_numOk       uint64
-	HealthCheck_numFail     uint64
-	ConditionalServers      []*ServerHostResponse
-	UnconditionalServers    []*ServerHostResponse
-	StickySessions          bool
-	StickyMethod            string
-	StickySessionTimeout    uint64
-	stickyCookieName        string
-	requestCounter          uint64
+	Hostname                string                `json:"hostname"`
+	HealthCheckInterval     uint64                `json:"health_check_interval"`
+	HealthCheckInitialDelay uint64                `json:"health_check_initial_delay"`
+	HealthCheckTimeout      uint64                `json:"health_check_timeout"`
+	HealthCheck_numOk       uint32                `json:"health_check_num_ok"`
+	HealthCheck_numFail     uint32                `json:"health_check_num_fail"`
+	ConditionalServers      []*ServerHostResponse `json:"conditional_servers"`
+	UnconditionalServers    []*ServerHostResponse `json:"unconditional_servers"`
+	StickySessions          bool                  `json:"sticky_sessions"`
+	StickyMethod            string                `json:"sticky_method"`
+	StickySessionTimeout    uint64                `json:"sticky_session_timeout"`
+	stickyCookieName        string                `json:"sticky_cookie_name"`
+	requestCounter          uint64                `json:"request_counter"`
 }
 
 func NewPoolResponse(pool *loadbalancer.Pool) *PoolResponse {
@@ -28,8 +28,8 @@ func NewPoolResponse(pool *loadbalancer.Pool) *PoolResponse {
 		HealthCheckInterval:     uint64(time.Duration(pool.HealthCheckInterval.Load()).Seconds()),
 		HealthCheckInitialDelay: uint64(time.Duration(pool.HealthCheckInitialDelay.Load()).Seconds()),
 		HealthCheckTimeout:      uint64(time.Duration(pool.HealthCheckTimeout.Load()).Seconds()),
-		HealthCheck_numOk:       uint64(time.Duration(pool.HealthCheck_numOk.Load()).Seconds()),
-		HealthCheck_numFail:     uint64(time.Duration(pool.HealthCheck_numFail.Load()).Seconds()),
+		HealthCheck_numOk:       pool.HealthCheck_numOk.Load(),
+		HealthCheck_numFail:     pool.HealthCheck_numFail.Load(),
 		StickySessions:          pool.StickySessions,
 		StickyMethod:            pool.StickyMethod.String(),
 		StickySessionTimeout:    uint64(pool.StickySessionTimeout.Seconds()),
@@ -79,5 +79,6 @@ func (pr *PoolResponse) String() string {
 			resp += "\t\t" + server.String() + "\n"
 		}
 	}
+	resp += fmt.Sprintf("\tRequestCounter=%d\n", pr.requestCounter)
 	return resp
 }

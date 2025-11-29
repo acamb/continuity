@@ -3,6 +3,9 @@ set -e
 cd /opt/continuity
 #if config file doesn't exist, create it from template
 if [ ! -f ./config.yaml ]; then
-  continuity-server sample-config
+  echo "No config found, creating default config..."
+  /usr/bin/continuity-server -sample-config
+  echo "Created default config:"
+  cat ./config.yaml
 fi
-continuity-server
+/usr/bin/continuity-server

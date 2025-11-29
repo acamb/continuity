@@ -28,7 +28,6 @@ func main() {
 				log.Fatalf("Error reading configuration: %v", err)
 			}
 			c = client.NewClient(configuration)
-			log.Printf("Loaded configuration from %s", filePath)
 		}
 	}
 

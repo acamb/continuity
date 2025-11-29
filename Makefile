@@ -155,12 +155,14 @@ docker-client-rpm-container:
 docker-client-rpm: client
 	make docker-client-rpm-container
 
-docker-release: server
+docker-release: clean server-static
 	docker build -t continuity-server -f Dockerfile .
 	docker tag continuity-server acamb23/continuity-server:$(VERSION)
+	docker tag continuity-server acamb23/continuity-server
 
 docker-publish: docker-release
 	docker push acamb23/continuity-server:$(VERSION)
+	docker push acamb23/continuity-server:latest
 
 release: server server-static client client-windows docker-server-deb docker-client-deb docker-server-rpm docker-client-rpm
 

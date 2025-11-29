@@ -228,7 +228,7 @@ func (p *Pool) Transaction(serverToAdd *ServerHost, serverToRemove uuid.UUID) er
 		if timedOut {
 			return errors.New("new server is taking too long, transaction rolled back")
 		} else {
-			return errors.New("new server is not healthy, transaction rolled back")
+			return errors.New("new server is not healthy, transaction rolled back. Server " + serverToAdd.String())
 		}
 	}
 }

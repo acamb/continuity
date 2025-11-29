@@ -2,4 +2,3 @@ address: 0.0.0.0
 port: 8080
 managenentaddress: 127.0.0.1
 managementport: 8090
-pools:
