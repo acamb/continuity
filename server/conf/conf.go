@@ -6,7 +6,6 @@ import (
 	"continuity/server/loadbalancer"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"time"
 
@@ -43,7 +42,7 @@ type PoolConfig struct {
 
 type ServerHostConfig struct {
 	Id              uuid.UUID
-	Address         *url.URL
+	Address         string
 	Condition       common.Condition
 	HealthCheckPath string
 }
@@ -125,14 +124,14 @@ func LoadConfig(path string) (*loadbalancer.LoadBalancer, *api.ApiServer, error)
 		}
 
 		for _, serverConf := range poolConf.ConditionalServers {
-			serverHost, err := loadbalancer.NewServerHost(serverConf.Address.String(), serverConf.HealthCheckPath, serverConf.Condition)
+			serverHost, err := loadbalancer.NewServerHost(serverConf.Address, serverConf.HealthCheckPath, serverConf.Condition)
 			if err != nil {
 				return nil, nil, err
 			}
 			pool.AddServer(serverHost)
 		}
 		for _, serverConf := range poolConf.UnconditionalServers {
-			serverHost, err := loadbalancer.NewServerHost(serverConf.Address.String(), serverConf.HealthCheckPath, common.Condition{})
+			serverHost, err := loadbalancer.NewServerHost(serverConf.Address, serverConf.HealthCheckPath, common.Condition{})
 			if err != nil {
 				return nil, nil, err
 			}
@@ -179,7 +178,7 @@ func SaveConfig(path string, lb *loadbalancer.LoadBalancer, api *api.ApiServer) 
 		for _, server := range pool.ConditionalServers {
 			serverConf := &ServerHostConfig{
 				Id:              server.Id,
-				Address:         server.Address,
+				Address:         server.Address.String(),
 				Condition:       server.Condition,
 				HealthCheckPath: server.HealthCheckPath,
 			}
@@ -188,7 +187,7 @@ func SaveConfig(path string, lb *loadbalancer.LoadBalancer, api *api.ApiServer) 
 		for _, server := range pool.UnconditionalServers {
 			serverConf := &ServerHostConfig{
 				Id:              server.Id,
-				Address:         server.Address,
+				Address:         server.Address.String(),
 				HealthCheckPath: server.HealthCheckPath,
 			}
 			poolConf.UnconditionalServers = append(poolConf.UnconditionalServers, serverConf)
