@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -17,10 +18,21 @@ import (
 
 type saveConfigFunc func(server *ApiServer)
 type ApiServer struct {
-	Address      string
-	Port         int
-	LoadBalancer *loadbalancer.LoadBalancer
-	saveConfig   chan bool
+	Address           string
+	Port              int
+	LoadBalancer      *loadbalancer.LoadBalancer
+	saveConfig        chan bool
+	transactions      map[uuid.UUID]*Transaction
+	transactionsMutex sync.RWMutex
+}
+
+type Transaction struct {
+	OldServerId uuid.UUID
+	NewServer   *loadbalancer.ServerHost
+	Completed   bool
+	Error       error
+	CreatedAdt  time.Time
+	CompletedAt time.Time
 }
 
 func NewApiServer(address string,
@@ -29,10 +41,12 @@ func NewApiServer(address string,
 	saveChannel chan bool,
 ) *ApiServer {
 	return &ApiServer{
-		Address:      address,
-		Port:         port,
-		LoadBalancer: loadBalancer,
-		saveConfig:   saveChannel,
+		Address:           address,
+		Port:              port,
+		LoadBalancer:      loadBalancer,
+		saveConfig:        saveChannel,
+		transactions:      make(map[uuid.UUID]*Transaction),
+		transactionsMutex: sync.RWMutex{},
 	}
 }
 
@@ -50,6 +64,7 @@ func (api *ApiServer) Start() {
 	router.POST("/pools/:hostname/server", api.AddServer)
 	router.DELETE("/pools/:hostname/:server", api.RemoveServer)
 	router.POST("/pools/:hostname/transaction", api.AddTransaction)
+	router.GET("/pools/transaction/:transaction", api.GetTransaction)
 
 	addr := api.Address + ":" + fmt.Sprint(api.Port)
 	log.Println("Starting API server on", addr)
@@ -60,8 +75,8 @@ func (api *ApiServer) Start() {
 }
 
 func (api *ApiServer) GetVersion(context *gin.Context) {
-	context.JSON(http.StatusOK, map[string]string{
-		"Version": version.Version,
+	context.JSON(http.StatusOK, responses.VersionResponse{
+		Version: version.Version,
 	})
 }
 
@@ -254,6 +269,7 @@ func (api *ApiServer) AddTransaction(context *gin.Context) {
 	}
 	err = context.ShouldBindJSON(&req)
 	if err != nil {
+		log.Printf("Error binding JSON: %v", err)
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -272,10 +288,55 @@ func (api *ApiServer) AddTransaction(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "invalid old server ID"})
 		return
 	}
-	err = pool.Transaction(server, serverUUID)
+	api.transactionsMutex.Lock()
+	defer api.transactionsMutex.Unlock()
+	txUUID := uuid.New()
+	api.transactions[txUUID] = &Transaction{
+		CreatedAdt:  time.Now(),
+		OldServerId: serverUUID,
+		NewServer:   server,
+		Completed:   false,
+		Error:       nil,
+	}
+	go func() {
+		err = pool.Transaction(server, serverUUID)
+		api.transactionsMutex.Lock()
+		defer api.transactionsMutex.Unlock()
+		tx := api.transactions[txUUID]
+		tx.Completed = true
+		tx.CompletedAt = time.Now()
+		if err != nil {
+			tx.Error = err
+		}
+		api.saveConfig <- true
+	}()
+	context.JSON(http.StatusOK, responses.TransactionResponse{
+		TransactionId: txUUID.String(),
+		Completed:     false,
+	})
+}
+
+func (api *ApiServer) GetTransaction(context *gin.Context) {
+	tx := context.Param("transaction")
+	transactionUUID, err := uuid.Parse(tx)
 	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}) //TODO better error code
+		context.JSON(http.StatusBadRequest, gin.H{"error": "invalid transaction ID"})
 		return
 	}
-	api.saveConfig <- true
+	api.transactionsMutex.RLock()
+	defer api.transactionsMutex.RUnlock()
+	transaction, ok := api.transactions[transactionUUID]
+	if !ok {
+		context.JSON(http.StatusNotFound, gin.H{"error": "transaction not found"})
+		return
+	}
+	resp := responses.TransactionResponse{
+		TransactionId: tx,
+		Completed:     transaction.Completed,
+		CompletedAt:   transaction.CompletedAt,
+	}
+	if transaction.Error != nil {
+		resp.Error = transaction.Error.Error()
+	}
+	context.JSON(http.StatusOK, resp)
 }

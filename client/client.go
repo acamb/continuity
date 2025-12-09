@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 const POOL_ENDPOINT = "/pools"
@@ -33,7 +34,7 @@ func handleError(resp *http.Response) {
 	readBody, _ := io.ReadAll(resp.Body)
 	respError := responses.ErrorResponse{}
 	_ = json.Unmarshal(readBody, &respError)
-	log.Fatalf("Request failed, server responded: %d - ", resp.StatusCode, respError.Error)
+	log.Fatalf("Request failed, server responded: %d - %s", resp.StatusCode, respError.Error)
 }
 
 func (c *Client) GetVersion() (string, error) {
@@ -49,12 +50,12 @@ func (c *Client) GetVersion() (string, error) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		versionResponse := map[string]string{}
+		versionResponse := responses.VersionResponse{}
 		err = json.Unmarshal(readBody, &versionResponse)
 		if err != nil {
 			log.Fatal(err)
 		}
-		return versionResponse["version"], nil
+		return versionResponse.Version, nil
 	}
 	return "", nil
 }
@@ -243,7 +244,41 @@ func (c *Client) Transaction(pool string, request requests.TransactionRequest) {
 	if resp.StatusCode != http.StatusOK {
 		handleError(resp)
 	} else {
-		log.Printf("Transaction completed successfully on pool %s\n", pool)
+		readBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		txResponse := responses.TransactionResponse{}
+		err = json.Unmarshal(readBody, &txResponse)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Transaction %s in progress...\n", txResponse.TransactionId)
+		counter := 0
+		for {
+			counter++
+			time.Sleep(1 * time.Second)
+			resp, err = c.httpclient.Get(c.endpoint + "/transaction/" + txResponse.TransactionId)
+			readBody, err := io.ReadAll(resp.Body)
+			if err != nil {
+				log.Fatal(err)
+			}
+			txResponse := responses.TransactionResponse{}
+			err = json.Unmarshal(readBody, &txResponse)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if txResponse.Completed {
+				if txResponse.Error != "" {
+					log.Printf("Transaction %s completed with error: %s\n", txResponse.TransactionId, txResponse.Error)
+				} else {
+					log.Printf("Transaction %s completed successfully\n", txResponse.TransactionId)
+				}
+				break
+			}
+			if counter%10 == 0 {
+				log.Printf("Transaction %s still in progress...\n", txResponse.TransactionId)
+			}
+		}
 	}
-
 }
