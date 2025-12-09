@@ -148,7 +148,7 @@ func LoadConfig(path string) (*loadbalancer.LoadBalancer, *api.ApiServer, error)
 		configuration.ManagementPort,
 		lb,
 		SaveConfigChan)
-	StartAutoSaveConfig(ConfigPath, lb, apiServer)
+	StartAutoSaveConfig(path, lb, apiServer)
 	return lb, apiServer, nil
 }
 
