@@ -125,6 +125,7 @@ func LoadConfig(path string) (*loadbalancer.LoadBalancer, *api.ApiServer, error)
 
 		for _, serverConf := range poolConf.ConditionalServers {
 			serverHost, err := loadbalancer.NewServerHost(serverConf.Address, serverConf.HealthCheckPath, serverConf.Condition)
+			serverHost.Id = serverConf.Id
 			if err != nil {
 				return nil, nil, err
 			}
@@ -132,6 +133,7 @@ func LoadConfig(path string) (*loadbalancer.LoadBalancer, *api.ApiServer, error)
 		}
 		for _, serverConf := range poolConf.UnconditionalServers {
 			serverHost, err := loadbalancer.NewServerHost(serverConf.Address, serverConf.HealthCheckPath, common.Condition{})
+			serverHost.Id = serverConf.Id
 			if err != nil {
 				return nil, nil, err
 			}
