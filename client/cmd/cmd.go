@@ -3,6 +3,7 @@ package main
 import (
 	"continuity/client"
 	"continuity/client/config"
+	"continuity/server/version"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -20,14 +21,26 @@ func main() {
 	}
 
 	rootCmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "configuration file path")
+	rootCmd.PersistentFlags().StringVarP(&filePath, "version", "v", "", "Prints server version")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if cmd.Use == "version" {
+			log.Printf("Continuity Client Version: %s", version.Version)
+			return
+		}
 		if cmd.Use != "sample-config" {
 			configuration, err = config.ReadConfiguration(filePath)
 			if err != nil {
 				log.Fatalf("Error reading configuration: %v", err)
 			}
 			c = client.NewClient(configuration)
+			v, err := c.GetVersion()
+			if err != nil {
+				log.Fatalf("Error getting server version: %v", err)
+			}
+			if v != version.Version {
+				log.Fatalf("Error getting server version. Expected %s, got %s", version.Version, v)
+			}
 		}
 	}
 

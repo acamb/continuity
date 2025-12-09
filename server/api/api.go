@@ -4,6 +4,7 @@ import (
 	"continuity/common/requests"
 	"continuity/common/responses"
 	"continuity/server/loadbalancer"
+	"continuity/server/version"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -39,6 +40,7 @@ func (api *ApiServer) Start() {
 	router := gin.Default()
 
 	// Define API routes
+	router.GET("/version", api.GetVersion)
 	router.GET("/pools", api.GetPools)
 	router.POST("/pools", api.CreatePool)
 	router.DELETE("/pools/:hostname", api.DeletePool)
@@ -55,6 +57,12 @@ func (api *ApiServer) Start() {
 		log.Fatal("Failed to start API server:", err)
 	}
 
+}
+
+func (api *ApiServer) GetVersion(context *gin.Context) {
+	context.JSON(http.StatusOK, map[string]string{
+		"Version": version.Version,
+	})
 }
 
 func (api *ApiServer) GetPools(context *gin.Context) {

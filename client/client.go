@@ -36,6 +36,29 @@ func handleError(resp *http.Response) {
 	log.Fatalf("Request failed, server responded: %d - ", resp.StatusCode, respError.Error)
 }
 
+func (c *Client) GetVersion() (string, error) {
+	resp, err := c.httpclient.Get(c.configuration.Host + ":" + fmt.Sprint(c.configuration.Port) + "/version")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		handleError(resp)
+	} else {
+		readBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		versionResponse := map[string]string{}
+		err = json.Unmarshal(readBody, &versionResponse)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return versionResponse["version"], nil
+	}
+	return "", nil
+}
+
 func (c *Client) AddPool(request requests.CreatePoolRequest) {
 	body, err := json.Marshal(request)
 	if err != nil {
