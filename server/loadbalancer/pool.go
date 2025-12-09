@@ -289,7 +289,7 @@ func (p *Pool) getStickyServer(req *http.Request) *ServerHost {
 		}
 		break
 	}
-	if stickySession != (Session{}) && (!p.checkIfServerExists(stickySession.ServerHost) ||
+	if stickySession != (Session{}) && (!p.CheckIfServerExists(stickySession.ServerHost) ||
 		stickySession.isExpired(p.StickySessionTimeout)) {
 		return nil
 	}
@@ -397,7 +397,7 @@ func (p *Pool) check(server *ServerHost) {
 	server.LastChecked.Store(time.Now().Unix())
 }
 
-func (p *Pool) checkIfServerExists(host *ServerHost) bool {
+func (p *Pool) CheckIfServerExists(host *ServerHost) bool {
 	p.serverListMutex.RLock()
 	defer p.serverListMutex.RUnlock()
 	for _, server := range append(p.ConditionalServers, p.UnconditionalServers...) {
@@ -414,4 +414,15 @@ func getHostFromRequest(req *http.Request) string {
 
 func (p *Pool) GetStickyCookieName() string {
 	return p.stickyCookieName
+}
+
+func (p *Pool) CheckServerUUID(serverUUID uuid.UUID) bool {
+	p.serverListMutex.RLock()
+	defer p.serverListMutex.RUnlock()
+	for _, server := range append(p.ConditionalServers, p.UnconditionalServers...) {
+		if server.Id == serverUUID {
+			return true
+		}
+	}
+	return false
 }

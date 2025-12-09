@@ -288,6 +288,11 @@ func (api *ApiServer) AddTransaction(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "invalid old server ID"})
 		return
 	}
+	ok := pool.CheckServerUUID(serverUUID)
+	if !ok {
+		context.JSON(http.StatusNotFound, gin.H{"error": "server " + serverUUID.String() + " not found in pool"})
+		return
+	}
 	api.transactionsMutex.Lock()
 	defer api.transactionsMutex.Unlock()
 	txUUID := uuid.New()
