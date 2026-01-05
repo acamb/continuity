@@ -12,7 +12,7 @@ all: server client
 
 server:
 	mkdir -p $(BINDIR)
-	go build -ldflags "-X 'continuity/server/version.Version=$(VERSION)'" -o $(BINDIR)/continuity-server_$(VERSION) ./server/cmd
+	GOOS=linux GOARCH=amd64 go build -ldflags "-X 'continuity/server/version.Version=$(VERSION)'" -o $(BINDIR)/continuity-server_$(VERSION) ./server/cmd
 
 server-static:
 	mkdir -p $(BINDIR)
@@ -20,7 +20,7 @@ server-static:
 
 client:
 	mkdir -p $(BINDIR)
-	go build -ldflags "-X 'continuity/client/version.Version=$(VERSION)'" -o $(BINDIR)/continuity_$(VERSION) ./client/cmd
+	GOOS=linux GOARCH=amd64 go build -ldflags "-X 'continuity/client/version.Version=$(VERSION)'" -o $(BINDIR)/continuity_$(VERSION) ./client/cmd
 
 client-windows:
 	mkdir -p $(BINDIR)
