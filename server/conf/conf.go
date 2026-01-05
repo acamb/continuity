@@ -217,7 +217,7 @@ func SaveConfig(path string, lb *loadbalancer.LoadBalancer, api *api.ApiServer) 
 func CreateSampleConfig(path string) error {
 	configuration := &Configuration{
 		Address:           "0.0.0.0",
-		Port:              443,
+		Port:              80,
 		ManagenentAddress: "127.0.0.1",
 		ManagementPort:    8090,
 		Pools:             []PoolConfig{},
