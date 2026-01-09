@@ -338,5 +338,3 @@ func TestAddTransaction_BadRequest(t *testing.T) {
 	w := performRequest(router, "POST", "/pools/any/transaction", []byte(`{}`))
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
-
-//TODO transaction_SUCCESS
