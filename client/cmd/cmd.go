@@ -20,6 +20,8 @@ func main() {
 		Short: "continuity client",
 	}
 
+	rootCmd.Version = version.Version
+
 	rootCmd.PersistentFlags().StringVarP(&filePath, "file", "f", "", "configuration file path")
 	rootCmd.Version = version.Version
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {

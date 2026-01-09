@@ -32,7 +32,7 @@ func TestCreateSampleConfig(t *testing.T) {
 
 	data, err := os.ReadFile(tmp)
 	require.Equal(t, `address: 0.0.0.0
-port: 443
+port: 80
 managenentaddress: 127.0.0.1
 managementport: 8090
 pools: []

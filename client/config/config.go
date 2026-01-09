@@ -8,8 +8,9 @@ import (
 )
 
 type Configuration struct {
-	Host string
-	Port int
+	Host        string `yaml:"host"`
+	Port        int    `yaml:"port"`
+	DefaultPool string `yaml:"default_pool"`
 }
 
 func ReadConfiguration(filePath string) (*Configuration, error) {
@@ -35,7 +36,10 @@ func readYaml(path string, config *Configuration) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		_ = file.Close()
+
+	}(file)
 
 	data, err := io.ReadAll(file)
 	if err != nil {
@@ -50,7 +54,12 @@ func WriteSampleConfiguration(config *Configuration) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(file)
 	data, err := yaml.Marshal(config)
 	if err != nil {
 		return err

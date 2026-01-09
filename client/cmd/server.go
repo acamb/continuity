@@ -28,7 +28,7 @@ var addServerCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Invalid condition: %v", err)
 		}
-
+		checkPoolParameter()
 		c.AddServer(poolName, requests.AddServerRequest{
 			NewServerAddress: serverAddress,
 			HealthCheckPath:  healthCheckPath,
@@ -40,7 +40,7 @@ var removeServerCmd = &cobra.Command{
 	Use:   "del",
 	Short: "Remove a server from a pool",
 	Run: func(cmd *cobra.Command, args []string) {
-
+		checkPoolParameter()
 		c.RemoveServer(poolName, serverUUID)
 	},
 }
@@ -52,7 +52,7 @@ var transactionCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Invalid condition: %v", err)
 		}
-
+		checkPoolParameter()
 		c.Transaction(poolName, requests.TransactionRequest{
 			NewServerAddress:         serverAddress,
 			NewServerHealthCheckPath: healthCheckPath,
@@ -60,6 +60,16 @@ var transactionCmd = &cobra.Command{
 			OldServerId:              serverUUID,
 		})
 	},
+}
+
+func checkPoolParameter() {
+	if poolName == "" {
+		if configuration.DefaultPool != "" {
+			poolName = configuration.DefaultPool
+		} else {
+			log.Fatal("pool parameter is required if no default_pool is set in the configuration")
+		}
+	}
 }
 
 func init() {
@@ -71,18 +81,15 @@ func init() {
 	addServerCmd.Flags().StringVarP(&serverAddress, "address", "a", "", "Address of the server to add. Must include protocol (http:// or https://)")
 	addServerCmd.Flags().StringVarP(&healthCheckPath, "health-check", "c", "/health", "Health check path for the server")
 	addServerCmd.Flags().StringVarP(&serverCondition, "condition", "", "", "Condition for adding the server in the format header=value")
-	_ = addPoolCmd.MarkFlagRequired("pool")
 	_ = addPoolCmd.MarkFlagRequired("address")
 
 	removeServerCmd.Flags().StringVarP(&poolName, "pool", "", "", "Name of the pool")
 	removeServerCmd.Flags().StringVarP(&serverUUID, "server", "s", "", "UUID of the server to remove")
-	_ = removeServerCmd.MarkFlagRequired("pool")
 	_ = removeServerCmd.MarkFlagRequired("server")
 
 	transactionCmd.Flags().StringVarP(&poolName, "pool", "p", "", "Name of the pool")
 	transactionCmd.Flags().StringVarP(&serverAddress, "address", "a", "", "Address of the server to add. Must include protocol (http:// or https://)")
 	transactionCmd.Flags().StringVarP(&healthCheckPath, "health-check", "c", "/health", "Health check path for the server to add")
 	transactionCmd.Flags().StringVarP(&serverUUID, "remove-server", "r", "", "UUID of the server to remove")
-	_ = transactionCmd.MarkFlagRequired("pool")
 	_ = transactionCmd.MarkFlagRequired("address")
 }
