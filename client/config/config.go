@@ -1,6 +1,7 @@
 package config
 
 import (
+	"continuity/common/sshimpl"
 	"io"
 	"os"
 
@@ -11,6 +12,8 @@ type Configuration struct {
 	Host        string `yaml:"host"`
 	Port        int    `yaml:"port"`
 	DefaultPool string `yaml:"default_pool"`
+	AuthKeyPath string `yaml:"auth_key"`
+	AuthKey     sshimpl.SSHKey
 }
 
 func ReadConfiguration(filePath string) (*Configuration, error) {
@@ -26,6 +29,14 @@ func ReadConfiguration(filePath string) (*Configuration, error) {
 	err := readYaml(filePath, config)
 	if err != nil {
 		return nil, err
+	}
+
+	if config.AuthKeyPath != "" {
+		authKey, err := sshimpl.ReadSshKey(config.AuthKeyPath)
+		if err != nil {
+			return nil, err
+		}
+		config.AuthKey = *authKey
 	}
 
 	return config, nil

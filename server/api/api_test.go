@@ -2,17 +2,24 @@ package api
 
 import (
 	"bytes"
+	"continuity/common/sshimpl"
 	"continuity/server/loadbalancer"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/ssh"
 )
 
 func fakeLoadBalancer(address string, port int) (*loadbalancer.LoadBalancer, error) {
@@ -29,7 +36,56 @@ func setupTestServer() *ApiServer {
 	gin.SetMode(gin.TestMode)
 	lb, _ := fakeLoadBalancer("127.0.0.1", 8080)
 	fakeSaveChan := make(chan bool, 10) //large enough to avoid blocking in tests
-	return NewApiServer("127.0.0.1", 8080, lb, fakeSaveChan)
+	return NewApiServer("127.0.0.1", 8080, lb, fakeSaveChan, "")
+}
+
+func setupTestServerWithAuth(t *testing.T, keytype string) (*ApiServer, string, *sshimpl.SSHKey) {
+	tmpDir := t.TempDir()
+	authorizedKeysPath := tmpDir + "/authorized_keys"
+
+	privateKey, err := generateSSHKey(keytype)
+	assert.NoError(t, err)
+
+	publicKeyBytes := ssh.MarshalAuthorizedKey(privateKey.PublicKey)
+	err = os.WriteFile(authorizedKeysPath, publicKeyBytes, 0600)
+	assert.NoError(t, err)
+
+	gin.SetMode(gin.TestMode)
+	lb, _ := fakeLoadBalancer("127.0.0.1", 8080)
+	fakeSaveChan := make(chan bool, 10)
+	api := NewApiServer("127.0.0.1", 8080, lb, fakeSaveChan, authorizedKeysPath)
+
+	return api, authorizedKeysPath, privateKey
+}
+
+func generateSSHKey(keytype string) (*sshimpl.SSHKey, error) {
+	var privateKey ssh.Signer
+	switch keytype {
+	case "rsa":
+		pk, err := rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			return nil, fmt.Errorf("error generating RSA key: %w", err)
+		}
+		privateKey, err = ssh.NewSignerFromKey(pk)
+		if err != nil {
+			return nil, fmt.Errorf("error generating RSA key: %w", err)
+		}
+	case "ed25519":
+		_, pk, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			return nil, fmt.Errorf("error generating Ed25519 key: %w", err)
+		}
+		privateKey, err = ssh.NewSignerFromKey(pk)
+		if err != nil {
+			return nil, fmt.Errorf("error generating signer Ed25519 key: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported key type: %s", keytype)
+	}
+	return &sshimpl.SSHKey{
+		PrivateKey: privateKey,
+		PublicKey:  privateKey.PublicKey(),
+	}, nil
 }
 
 func performRequest(r http.Handler, method, path string, body []byte) *httptest.ResponseRecorder {
@@ -337,4 +393,48 @@ func TestAddTransaction_BadRequest(t *testing.T) {
 
 	w := performRequest(router, "POST", "/pools/any/transaction", []byte(`{}`))
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestAuthMiddleware_Success(t *testing.T) {
+	log.Println("Executing ", t.Name())
+
+	testCases := []struct {
+		name    string
+		keyType string
+	}{
+		{"RSA", "rsa"},
+		{"ED25519", "ed25519"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			api, _, key := setupTestServerWithAuth(t, tc.keyType)
+
+			router := gin.Default()
+			router.Use(api.authMiddleware())
+			router.GET("/test", func(c *gin.Context) {
+				c.JSON(http.StatusOK, gin.H{"status": "ok"})
+			})
+
+			timestamp := []byte(fmt.Sprintf("%d", time.Now().Unix()))
+
+			signature, err := sshimpl.Crypt(key, timestamp)
+			assert.NoError(t, err)
+
+			authData := append(timestamp, signature...)
+			authHeader := base64.StdEncoding.EncodeToString(authData)
+
+			req, _ := http.NewRequest("GET", "/test", nil)
+			req.Header.Set("Authorization", authHeader)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusOK, w.Code)
+
+			var response map[string]string
+			err = json.Unmarshal(w.Body.Bytes(), &response)
+			assert.NoError(t, err)
+			assert.Equal(t, "ok", response["status"])
+		})
+	}
 }
