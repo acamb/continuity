@@ -26,7 +26,7 @@ type ApiServer struct {
 	saveConfig         chan bool
 	transactions       map[uuid.UUID]*Transaction
 	transactionsMutex  sync.RWMutex
-	AuthorizedKeyspath string
+	AuthorizedKeyspath *string
 }
 
 type Transaction struct {
@@ -42,7 +42,7 @@ func NewApiServer(address string,
 	port int,
 	loadBalancer *loadbalancer.LoadBalancer,
 	saveChannel chan bool,
-	authorizedKeyspath string,
+	authorizedKeyspath *string,
 ) *ApiServer {
 	return &ApiServer{
 		Address:            address,
@@ -361,7 +361,7 @@ func (api *ApiServer) verifyAuth(context *gin.Context) bool {
 
 	timestamp := data[:10]
 	signature := data[10:]
-	keys, err := sshimpl.ReadAuthorizedKeys(api.AuthorizedKeyspath)
+	keys, err := sshimpl.ReadAuthorizedKeys(*api.AuthorizedKeyspath)
 	if err != nil {
 		log.Printf("Error reading authorized keys: %v", err)
 		return false
@@ -395,7 +395,7 @@ func (api *ApiServer) verifyAuth(context *gin.Context) bool {
 
 func (api *ApiServer) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if api.AuthorizedKeyspath != "" && !api.verifyAuth(c) {
+		if api.AuthorizedKeyspath != nil && *api.AuthorizedKeyspath != "" && !api.verifyAuth(c) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			c.Abort()
 			return

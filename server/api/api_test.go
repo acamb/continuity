@@ -36,7 +36,7 @@ func setupTestServer() *ApiServer {
 	gin.SetMode(gin.TestMode)
 	lb, _ := fakeLoadBalancer("127.0.0.1", 8080)
 	fakeSaveChan := make(chan bool, 10) //large enough to avoid blocking in tests
-	return NewApiServer("127.0.0.1", 8080, lb, fakeSaveChan, "")
+	return NewApiServer("127.0.0.1", 8080, lb, fakeSaveChan, nil)
 }
 
 func setupTestServerWithAuth(t *testing.T, keytype string) (*ApiServer, string, *sshimpl.SSHKey) {
@@ -53,7 +53,7 @@ func setupTestServerWithAuth(t *testing.T, keytype string) (*ApiServer, string, 
 	gin.SetMode(gin.TestMode)
 	lb, _ := fakeLoadBalancer("127.0.0.1", 8080)
 	fakeSaveChan := make(chan bool, 10)
-	api := NewApiServer("127.0.0.1", 8080, lb, fakeSaveChan, authorizedKeysPath)
+	api := NewApiServer("127.0.0.1", 8080, lb, fakeSaveChan, &authorizedKeysPath)
 
 	return api, authorizedKeysPath, privateKey
 }

@@ -23,7 +23,7 @@ type Configuration struct {
 	ManagenentAddress string
 	ManagementPort    int
 	Pools             []PoolConfig
-	AuthorizedKeys    string
+	AuthorizedKeys    *string `yaml:"authorizedkeys,omitempty"`
 }
 
 type PoolConfig struct {
@@ -65,11 +65,11 @@ func LoadConfig(path string) (*loadbalancer.LoadBalancer, *api.ApiServer, error)
 		return nil, nil, err
 	}
 
-	if configuration.AuthorizedKeys != "" {
-		if _, err := os.Stat(configuration.AuthorizedKeys); os.IsNotExist(err) {
-			return nil, nil, fmt.Errorf("authorized keys file does not exist: %s", configuration.AuthorizedKeys)
+	if configuration.AuthorizedKeys != nil {
+		if _, err := os.Stat(*configuration.AuthorizedKeys); os.IsNotExist(err) {
+			return nil, nil, fmt.Errorf("authorized keys file does not exist: %s", *configuration.AuthorizedKeys)
 		} else {
-			fmt.Printf("Using authorized keys file: %s\n", configuration.AuthorizedKeys)
+			fmt.Printf("Using authorized keys file: %s\n", *configuration.AuthorizedKeys)
 		}
 	} else {
 		fmt.Println("Warning: No authorized keys file specified, API server will not use authentication")
