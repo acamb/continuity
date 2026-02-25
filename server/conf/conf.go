@@ -23,6 +23,7 @@ type Configuration struct {
 	ManagenentAddress string
 	ManagementPort    int
 	Pools             []PoolConfig
+	AuthorizedKeys    *string `yaml:"authorizedkeys,omitempty"`
 }
 
 type PoolConfig struct {
@@ -63,6 +64,17 @@ func LoadConfig(path string) (*loadbalancer.LoadBalancer, *api.ApiServer, error)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	if configuration.AuthorizedKeys != nil {
+		if _, err := os.Stat(*configuration.AuthorizedKeys); os.IsNotExist(err) {
+			return nil, nil, fmt.Errorf("authorized keys file does not exist: %s", *configuration.AuthorizedKeys)
+		} else {
+			fmt.Printf("Using authorized keys file: %s\n", *configuration.AuthorizedKeys)
+		}
+	} else {
+		fmt.Println("Warning: No authorized keys file specified, API server will not use authentication")
+	}
+
 	lb, err := loadbalancer.NewLoadBalancer(configuration.Address, configuration.Port)
 	if err != nil {
 		return nil, nil, err
@@ -147,7 +159,8 @@ func LoadConfig(path string) (*loadbalancer.LoadBalancer, *api.ApiServer, error)
 	apiServer := api.NewApiServer(configuration.ManagenentAddress,
 		configuration.ManagementPort,
 		lb,
-		SaveConfigChan)
+		SaveConfigChan,
+		configuration.AuthorizedKeys)
 	StartAutoSaveConfig(path, lb, apiServer)
 	return lb, apiServer, nil
 }
@@ -159,6 +172,7 @@ func SaveConfig(path string, lb *loadbalancer.LoadBalancer, api *api.ApiServer) 
 		ManagenentAddress: api.Address,
 		ManagementPort:    api.Port,
 		Pools:             []PoolConfig{},
+		AuthorizedKeys:    api.AuthorizedKeyspath,
 	}
 	for _, pool := range lb.GetPools() {
 		poolConf := PoolConfig{
@@ -217,7 +231,7 @@ func SaveConfig(path string, lb *loadbalancer.LoadBalancer, api *api.ApiServer) 
 func CreateSampleConfig(path string) error {
 	configuration := &Configuration{
 		Address:           "0.0.0.0",
-		Port:              443,
+		Port:              80,
 		ManagenentAddress: "127.0.0.1",
 		ManagementPort:    8090,
 		Pools:             []PoolConfig{},

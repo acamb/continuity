@@ -1,0 +1,4 @@
+0.2.0:
+ - Added default_pool in client configuration
+ - fixed deb & rpm packages to restart service on upgrade
+ - added support for authentication via ssh keys

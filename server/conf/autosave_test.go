@@ -23,7 +23,7 @@ func TestAutoSaveServersAndReloadConfig(t *testing.T) {
 	defer os.Remove(ConfigPath)
 	gin.SetMode(gin.TestMode)
 	lb, _ := loadbalancer.NewLoadBalancer("127.0.0.1", 8080)
-	apiServer := api.NewApiServer("127.0.0.1", 8090, lb, SaveConfigChan)
+	apiServer := api.NewApiServer("127.0.0.1", 8090, lb, SaveConfigChan, nil)
 
 	//Create pool request
 	reqBody := map[string]interface{}{

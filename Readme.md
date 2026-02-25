@@ -94,6 +94,55 @@ make client
 ```
 This will create the client binary (`continuity`) in the `bin/` directory.
 
+## Authentication
+By default the management port is binded to localhost and not protected.
+You can enable authentication via ssh keys by setting the `auth_key` field in the client configuration, pointing to a private ssh key (currently only keys not protected by a passphrase are supported).
+```yaml
+host: http://localhost
+port: 8090
+default_pool: test
+auth_key: /home/user/.ssh/id_ed25519
+```
+
+On the server you must specify an authorized_keys file containing the public keys allowed to access the management API, for example:
+```yaml
+address: 0.0.0.0
+port: 443
+managenentaddress: 127.0.0.1
+managementport: 8090
+pools:
+authorizedkeys: ./authorized_keys
+```
+
+You can manage the authorized_keys file as you would for ssh access, for example to add a new key you can use:
+
+```bash
+echo "[public_key_string]" >> /path/to/authorized_keys
+```
+
+When the authentication is enabled, the client sends an `Authorization` header with a timestamp and a signature of the timestamp using the private key.
+The server verifies the signature using the public keys in the authorized_keys file and checks that the timestamp is within a valid time window to prevent replay attacks.
+The tokens are considered valid for 30 seconds.
+
+If you use the docker image, you can mount the authorized_keys file (and the configuration file) as a volume:
+
+```bash
+docker run -d -p 80:80 -p 8090:8090 -v /path/to/continuity.yaml:/opt/continuity/config.yaml -v /path/to/authorized_keys:/opt/continuity/authorized_keys acamb23/continuity-server:latest
+```
+or via compose file:
+
+```yaml
+services:
+  continuity:
+    image: acamb23/continuity:latest
+    ports:
+      - "80:80"
+      - "8090:8090"
+    volumes:
+      - /path/to/continuity.yaml:/opt/continuity/config.yaml
+      - /path/to/authorized_keys:/opt/continuity/authorized_keys
+```
+
 ## Client Usage
 
 Run the client in the directory containing your configuration file (config.yaml by default) or specify the config file with the `-config` flag.

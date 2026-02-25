@@ -2,6 +2,7 @@ package main
 
 import (
 	"continuity/common/requests"
+	"log"
 
 	"github.com/spf13/cobra"
 )
@@ -71,10 +72,8 @@ var listPoolsCmd = &cobra.Command{
 var poolConfigCmd = &cobra.Command{
 	Use:   "config POOL_NAME",
 	Short: "Get configuration of a specific pool",
-	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		hostname = args[0]
-
+		checkPoolArg(args)
 		c.GetPoolConfig(hostname, printJson)
 	},
 }
@@ -82,10 +81,8 @@ var poolConfigCmd = &cobra.Command{
 var poolStatsCmd = &cobra.Command{
 	Use:   "stats POOL_NAME",
 	Short: "Get statistics of a specific pool",
-	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		hostname = args[0]
-
+		checkPoolArg(args)
 		c.GetPoolStats(hostname, printJson)
 	},
 }
@@ -93,10 +90,8 @@ var poolStatsCmd = &cobra.Command{
 var updatePoolCmd = &cobra.Command{
 	Use:   "update POOL_NAME",
 	Short: "Update configuration of a specific pool",
-	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		hostname = args[0]
-
+		checkPoolArg(args)
 		c.UpdatePool(requests.UpdatePoolRequest{
 			Hostname:                hostname,
 			HealthCheckInterval:     *healthCheckIntervalUpdate,
@@ -106,6 +101,18 @@ var updatePoolCmd = &cobra.Command{
 			HealthCheck_numFail:     *healthCheckNumFailUpdate,
 		})
 	},
+}
+
+func checkPoolArg(args []string) {
+	if len(args) == 0 {
+		if configuration.DefaultPool != "" {
+			hostname = configuration.DefaultPool
+		} else {
+			log.Fatal("POOL_NAME is required if no default_pool is set in the configuration")
+		}
+	} else {
+		hostname = args[0]
+	}
 }
 
 func init() {

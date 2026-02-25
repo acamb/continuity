@@ -32,7 +32,7 @@ func TestCreateSampleConfig(t *testing.T) {
 
 	data, err := os.ReadFile(tmp)
 	require.Equal(t, `address: 0.0.0.0
-port: 443
+port: 80
 managenentaddress: 127.0.0.1
 managementport: 8090
 pools: []
@@ -45,7 +45,7 @@ func TestSaveAndLoadBaseConfig(t *testing.T) {
 	defer os.Remove(tmp)
 	fakeChannel := make(chan bool, 10)
 	lb, _ := loadbalancer.NewLoadBalancer("127.0.0.1", 8080)
-	apiServer := api.NewApiServer("127.0.0.1", 8090, lb, fakeChannel)
+	apiServer := api.NewApiServer("127.0.0.1", 8090, lb, fakeChannel, nil)
 
 	err := SaveConfig(tmp, lb, apiServer)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestSaveAndLoadConfigWithPool(t *testing.T) {
 	err := lb.AddPool(pool)
 	require.NoError(t, err)
 	fakeChannel := make(chan bool, 10)
-	apiServer := api.NewApiServer("127.0.0.1", 8090, lb, fakeChannel)
+	apiServer := api.NewApiServer("127.0.0.1", 8090, lb, fakeChannel, nil)
 
 	err = SaveConfig(tmp, lb, apiServer)
 	require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestSaveAndLoadConfigWithConditionalAndUnconditionalServers(t *testing.T) {
 	pool.ConditionalServers = append(pool.ConditionalServers, condServer)
 	fakeChannel := make(chan bool, 10)
 	lb.Pools["test.example.com"] = pool
-	apiServer := api.NewApiServer("127.0.0.1", 8090, lb, fakeChannel)
+	apiServer := api.NewApiServer("127.0.0.1", 8090, lb, fakeChannel, nil)
 
 	err := SaveConfig(tmp, lb, apiServer)
 	require.NoError(t, err)

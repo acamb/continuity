@@ -12,7 +12,7 @@ all: server client
 
 server:
 	mkdir -p $(BINDIR)
-	go build -ldflags "-X 'continuity/server/version.Version=$(VERSION)'" -o $(BINDIR)/continuity-server_$(VERSION) ./server/cmd
+	GOOS=linux GOARCH=amd64 go build -ldflags "-X 'continuity/server/version.Version=$(VERSION)'" -o $(BINDIR)/continuity-server_$(VERSION) ./server/cmd
 
 server-static:
 	mkdir -p $(BINDIR)
@@ -20,7 +20,7 @@ server-static:
 
 client:
 	mkdir -p $(BINDIR)
-	go build -ldflags "-X 'continuity/client/version.Version=$(VERSION)'" -o $(BINDIR)/continuity_$(VERSION) ./client/cmd
+	GOOS=linux GOARCH=amd64 go build -ldflags "-X 'continuity/client/version.Version=$(VERSION)'" -o $(BINDIR)/continuity_$(VERSION) ./client/cmd
 
 client-windows:
 	mkdir -p $(BINDIR)
@@ -43,8 +43,12 @@ deb:
     id -u continuity-server >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin continuity-server\n\
     chown -R continuity-server:continuity-server /opt/continuity\n\
     systemctl daemon-reload\n\
-    systemctl enable continuity-server.service\n\
-    systemctl start continuity-server.service\n\
+    if systemctl is-active --quiet continuity-server.service; then\n\
+		systemctl restart continuity-server.service\n\
+	else\n\
+		systemctl enable continuity-server.service\n\
+		systemctl start continuity-server.service\n\
+	fi\n\
     " > $(PKGDIR)/DEBIAN/postinst
 	chmod 755 $(PKGDIR)/DEBIAN/postinst
 	dpkg-deb --build $(PKGDIR) $(DEBNAME)
@@ -74,8 +78,12 @@ rpm:
 	echo "id -u continuity-server >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin continuity-server" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
 	echo "chown -R continuity-server:continuity-server /opt/continuity" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
 	echo "systemctl daemon-reload" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
-	echo "systemctl enable continuity-server.service" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
-	echo "systemctl start continuity-server.service" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
+	echo "if systemctl is-active --quiet continuity-server.service; then" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
+	echo "    systemctl restart continuity-server.service" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
+	echo "else" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
+	echo "    systemctl enable continuity-server.service" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
+	echo "    systemctl start continuity-server.service" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
+	echo "fi" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
 	echo "" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
 	echo "%files" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec
 	echo "/usr/bin/continuity-server" >> $(PKGDIR)-rpm/SPECS/continuity-server.spec

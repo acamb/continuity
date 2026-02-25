@@ -3,12 +3,14 @@ package api
 import (
 	"continuity/common/requests"
 	"continuity/common/responses"
+	"continuity/common/sshimpl"
 	"continuity/server/loadbalancer"
 	"continuity/server/version"
 	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -18,12 +20,13 @@ import (
 
 type saveConfigFunc func(server *ApiServer)
 type ApiServer struct {
-	Address           string
-	Port              int
-	LoadBalancer      *loadbalancer.LoadBalancer
-	saveConfig        chan bool
-	transactions      map[uuid.UUID]*Transaction
-	transactionsMutex sync.RWMutex
+	Address            string
+	Port               int
+	LoadBalancer       *loadbalancer.LoadBalancer
+	saveConfig         chan bool
+	transactions       map[uuid.UUID]*Transaction
+	transactionsMutex  sync.RWMutex
+	AuthorizedKeyspath *string
 }
 
 type Transaction struct {
@@ -39,20 +42,22 @@ func NewApiServer(address string,
 	port int,
 	loadBalancer *loadbalancer.LoadBalancer,
 	saveChannel chan bool,
+	authorizedKeyspath *string,
 ) *ApiServer {
 	return &ApiServer{
-		Address:           address,
-		Port:              port,
-		LoadBalancer:      loadBalancer,
-		saveConfig:        saveChannel,
-		transactions:      make(map[uuid.UUID]*Transaction),
-		transactionsMutex: sync.RWMutex{},
+		Address:            address,
+		Port:               port,
+		LoadBalancer:       loadBalancer,
+		saveConfig:         saveChannel,
+		transactions:       make(map[uuid.UUID]*Transaction),
+		transactionsMutex:  sync.RWMutex{},
+		AuthorizedKeyspath: authorizedKeyspath,
 	}
 }
 
 func (api *ApiServer) Start() {
 	router := gin.Default()
-
+	router.Use(api.authMiddleware())
 	// Define API routes
 	router.GET("/version", api.GetVersion)
 	router.GET("/pools", api.GetPools)
@@ -344,4 +349,57 @@ func (api *ApiServer) GetTransaction(context *gin.Context) {
 		resp.Error = transaction.Error.Error()
 	}
 	context.JSON(http.StatusOK, resp)
+}
+
+func (api *ApiServer) verifyAuth(context *gin.Context) bool {
+	req := context.Request
+	authHeader := req.Header.Get("Authorization")
+	if authHeader == "" {
+		return false
+	}
+	data, _ := base64.StdEncoding.DecodeString(authHeader)
+
+	timestamp := data[:10]
+	signature := data[10:]
+	keys, err := sshimpl.ReadAuthorizedKeys(*api.AuthorizedKeyspath)
+	if err != nil {
+		log.Printf("Error reading authorized keys: %v", err)
+		return false
+	}
+	found := false
+	for _, key := range keys {
+		err := sshimpl.Verify(key, signature, timestamp)
+		if err == nil {
+			found = true
+			break
+		} else {
+			log.Printf("Error verifying signature with key: %v", err)
+		}
+	}
+
+	if found {
+		timestampInt, err := strconv.ParseInt(string(timestamp), 10, 64)
+		if err != nil {
+			log.Printf("Error parsing timestamp: %v", err)
+			return false
+		}
+		if time.Since(time.Unix(timestampInt, 0)) < 30*time.Second {
+			return true
+		} else {
+			log.Printf("Auth failed: timestamp too old !?")
+		}
+	}
+
+	return false
+}
+
+func (api *ApiServer) authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if api.AuthorizedKeyspath != nil && *api.AuthorizedKeyspath != "" && !api.verifyAuth(c) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
 }

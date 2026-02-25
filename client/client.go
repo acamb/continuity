@@ -5,6 +5,7 @@ import (
 	"continuity/client/config"
 	"continuity/common/requests"
 	"continuity/common/responses"
+	"continuity/common/sshimpl"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -22,12 +23,33 @@ type Client struct {
 	endpoint      string
 }
 
+type AuthRoundTripper struct {
+	client *Client
+	base   http.RoundTripper
+}
+
+func (a *AuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if a.client.configuration.AuthKey != (sshimpl.SSHKey{}) {
+		if err := a.client.addAuthHeader(req); err != nil {
+			return nil, err
+		}
+	}
+	return a.base.RoundTrip(req)
+}
+
 func NewClient(configuration *config.Configuration) Client {
-	return Client{
+	client := Client{
 		httpclient:    http.Client{},
 		configuration: configuration,
 		endpoint:      configuration.Host + ":" + fmt.Sprint(configuration.Port) + POOL_ENDPOINT,
 	}
+	client.httpclient = http.Client{
+		Transport: &AuthRoundTripper{
+			client: &client,
+			base:   http.DefaultTransport,
+		},
+	}
+	return client
 }
 
 func handleError(resp *http.Response) {
@@ -281,4 +303,15 @@ func (c *Client) Transaction(pool string, request requests.TransactionRequest) {
 			}
 		}
 	}
+}
+
+func (c *Client) addAuthHeader(req *http.Request) error {
+	timestamp := []byte(fmt.Sprintf("%d", time.Now().Unix()))
+	signature, err := sshimpl.Crypt(&c.configuration.AuthKey, timestamp)
+	if err != nil {
+		return err
+	}
+	authHeader := base64.StdEncoding.EncodeToString(append(timestamp, signature...))
+	req.Header.Set("Authorization", authHeader)
+	return nil
 }
